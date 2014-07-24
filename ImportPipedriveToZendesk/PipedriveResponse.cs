@@ -14,6 +14,9 @@ namespace ImportPipedriveToZendesk {
     class PipedrivePerson {
         public int id { get; set; }
         public string name { get; set; }
+        public string phone { get; set; }
+        public int org_id { get; set; }
+        public string org_name { get; set; }
     }
 
     class PipedriveAdditionalData {
