@@ -16,12 +16,13 @@ namespace ImportPipedriveToZendesk {
     class Program {
 
         static string PipedriveApiUrl = "http://api.pipedrive.com/v1";
-        static string PipedriveApiToken = "XXXXXXXXXXXXXXXXXXXXXXXX";
-        static ZendeskApi zendeskApi = new ZendeskApi("https://xxxxxxx.zendesk.com/api/v2", "xxxx@xxxxx.com", "", "XXXXXXXXXXXXXXXXXXXXXXXX");
+        static string PipedriveApiToken = "";
+        static ZendeskApi zendeskApi = new ZendeskApi("https://.zendesk.com/api/v2", "@.com", "", "");
 
         static void Main(string[] args) {
 
-            PipedrivePerson person; 
+            PipedrivePerson person;
+            bool updateUser;
 
             // contador de usuarios atualizados
             int usersUpdatedCount = 0;
@@ -47,25 +48,27 @@ namespace ImportPipedriveToZendesk {
 
                         Console.Out.Write("FOUND!!! ");
 
-                        // verifica se o telefone do usuario no zendesk é nulo e o no pipedrive não
-                        if (user.Phone == null)
-                        {
-                            usersWithoutPhoneCount++;
+                        updateUser = false;
 
-                            Console.Out.Write(usersWithoutPhoneCount);
+                        if (person.phones.Count() > 0) {
+                            if (user.Phone == null) {
+                                user.Phone = person.phones.First<PipedriveContact>().value;
+                                updateUser = true;
+                            }                        
+                        }   
 
-                            if (person.phone != null)
-                            {
-                                user.Phone = person.phone;
-                                zendeskApi.Users.UpdateUserAsync(user);
-
-                                // incrementa contador
-                                usersUpdatedCount++;
-
-                                Console.Out.Write("PHONE UPDATED!!! " + usersUpdatedCount);
-                            }
+                        if (person.phones.Count() > 1) {
+                            if (user.CustomFields["celular"] == null) {
+                                user.CustomFields["celular"] = person.phones[1].value;
+                                updateUser = true;
+                            }   
                         }
-                        
+
+                        if (updateUser) {
+                            zendeskApi.Users.UpdateUser(user);
+                            usersUpdatedCount++;
+                            Console.Out.Write("PHONE UPDATED!!! " + usersUpdatedCount);
+                        }
                     }
                     catch (Newtonsoft.Json.JsonSerializationException ex)
                     {
@@ -103,9 +106,14 @@ namespace ImportPipedriveToZendesk {
                 return new PipedrivePerson();
             }
 
-            PipedrivePerson person = searchResponse.data.First<PipedrivePerson>();
+            PipedrivePerson person = searchResponse.data.FirstOrDefault(p => !String.IsNullOrEmpty(p.phone));
 
-            return person;
+            string searchByIdUrl = String.Format("{0}/persons/{2}?api_token={1}",
+                PipedriveApiUrl, PipedriveApiToken, person.id
+            );
+            searchResponse = SendPipedriveRequest(searchByIdUrl);
+
+            return searchResponse.person;
         }
 
         private static PipedriveResponse SendPipedriveRequest(string url)
@@ -114,6 +122,8 @@ namespace ImportPipedriveToZendesk {
             Stream objStream = wrGETURL.GetResponse().GetResponseStream();
             StreamReader objReader = new StreamReader(objStream);
             string sLine = objReader.ReadLine();
+            sLine = sLine.Replace("\"phone\":[", "\"phones\":[");
+            sLine = sLine.Replace("\"data\":{", "\"person\":{");
             PipedriveResponse pipedriveResponse = JsonConvert.DeserializeObject<PipedriveResponse>(sLine);           
 
             return pipedriveResponse;

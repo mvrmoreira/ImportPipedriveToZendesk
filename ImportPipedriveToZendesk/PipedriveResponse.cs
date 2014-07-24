@@ -8,15 +8,21 @@ namespace ImportPipedriveToZendesk {
     class PipedriveResponse {
         public bool success { get; set; }
         public List<PipedrivePerson> data { get; set; }
-        public PipedriveAdditionalData additional_data { get; set; }
+        public PipedrivePerson person { get; set; }
+        //public PipedriveAdditionalData additional_data { get; set; }
     }
 
     class PipedrivePerson {
         public int id { get; set; }
         public string name { get; set; }
         public string phone { get; set; }
-        public int org_id { get; set; }
-        public string org_name { get; set; }
+        public List<PipedriveContact> phones { get; set; }
+    }
+
+    class PipedriveContact {
+        public string label { get; set; }
+        public string value { get; set; }
+        //public string primary { get; set; }
     }
 
     class PipedriveAdditionalData {
